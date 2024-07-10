@@ -89,7 +89,7 @@ export class ExchangeRateService {
                     }
                 }
             });
-            StoreCache.setItem(VCBExchangeKey, JSON.stringify(exchangeRates), 10)
+            StoreCache.setItem(VCBExchangeKey, JSON.stringify(exchangeRates), 600)
             console.log(exchangeRates, "no cache");
 
         } else {
