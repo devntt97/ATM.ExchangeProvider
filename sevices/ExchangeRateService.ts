@@ -90,7 +90,7 @@ export class ExchangeRateService {
                 }
             }
         });
-        exchangeRates["date"] = date
+        exchangeRates["date"] = new Date().toISOString()
         StoreCache.setItem(VCBExchangeKey, JSON.stringify(exchangeRates), configCahe.Expire)
         return exchangeRates
     }
