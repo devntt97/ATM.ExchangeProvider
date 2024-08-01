@@ -44,11 +44,15 @@ class Store {
 
 export const StoreCache = new Store()
 const VCBExchangeKey = "VCBExchangeKey"
+export const configCahe = {
+    Expire: 6 * 3600
+}
 export class ExchangeRateService {
     public static readonly UrlVCB = "https://portal.vietcombank.com.vn/UserControls/TVPortal.TyGia/pListTyGia.aspx?txttungay={0}&BacrhID=1&isEn=False";
     public async RefreshExchangeVCBTableAsync() {
-        let exchangeRates: { [key: string]: number } = {};
-        const url = ExchangeRateService.UrlVCB.replace("{0}", new Date(Date.now() + 7 * 60 * 60 * 1000).toLocaleDateString('en-GB'));
+        let exchangeRates: { [key: string]: number | string } = {};
+        const date = new Date(Date.now() + 7 * 60 * 60 * 1000).toLocaleDateString('en-GB')
+        const url = ExchangeRateService.UrlVCB.replace("{0}", date);
         let config = {
             method: 'get',
             maxBodyLength: Infinity,
@@ -86,12 +90,13 @@ export class ExchangeRateService {
                 }
             }
         });
-        StoreCache.setItem(VCBExchangeKey, JSON.stringify(exchangeRates), 6 * 3600)
+        exchangeRates["date"] = date
+        StoreCache.setItem(VCBExchangeKey, JSON.stringify(exchangeRates), configCahe.Expire)
         return exchangeRates
     }
-    public async GetExchangeRateVCBTableAsync(cancellationToken?: AbortSignal): Promise<{ [key: string]: number }> {
+    public async GetExchangeRateVCBTableAsync(cancellationToken?: AbortSignal): Promise<{ [key: string]: number | string }> {
         const cacheValue = StoreCache.getItem(VCBExchangeKey)
-        let exchangeRates: { [key: string]: number } = cacheValue ? JSON.parse(cacheValue) : {};
+        let exchangeRates: { [key: string]: number | string } = cacheValue ? JSON.parse(cacheValue) : {};
         if (!cacheValue) {
             exchangeRates = await this.RefreshExchangeVCBTableAsync()
             console.log(exchangeRates, "no cache");
