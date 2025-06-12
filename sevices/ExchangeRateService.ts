@@ -1,3 +1,4 @@
+import { IRateMoneyResponse } from '@/models';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 class StoreItem {
@@ -48,51 +49,28 @@ export const configCahe = {
     Expire: 6 * 3600
 }
 export class ExchangeRateService {
-    public static readonly UrlVCB = "https://portal.vietcombank.com.vn/UserControls/TVPortal.TyGia/pListTyGia.aspx?txttungay={0}&BacrhID=1&isEn=False";
+    public static readonly UrlVCB = "https://www.vietcombank.com.vn/api/exchangerates?date={0}";
     public async RefreshExchangeVCBTableAsync() {
         let exchangeRates: { [key: string]: number | string } = {};
-        const date = new Date(Date.now() + 7 * 60 * 60 * 1000).toLocaleDateString('en-GB')
+        const date = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10)
+        console.log(`Fetching exchange rates for date: ${date}`);
         const url = ExchangeRateService.UrlVCB.replace("{0}", date);
         let config = {
             method: 'get',
             maxBodyLength: Infinity,
             url: url,
-            headers: {
-                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'accept-language': 'vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5,zh-CN;q=0.4,zh;q=0.3',
-                'cache-control': 'no-cache',
-                'pragma': 'no-cache',
-                'priority': 'u=0, i',
-                'sec-ch-ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
-                'sec-ch-ua-mobile': '?0',
-                'sec-ch-ua-platform': '"Windows"',
-                'sec-fetch-dest': 'document',
-                'sec-fetch-mode': 'navigate',
-                'sec-fetch-site': 'none',
-                'sec-fetch-user': '?1',
-                'upgrade-insecure-requests': '1',
-                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-            }
         };
-
         const response = await axios.request(config)
-
-        const content = response.data;
-        const $ = cheerio.load(content);
-        const rows = $('tr');
-        rows.each((_, row) => {
-            const columns = $(row).find('td');
-            if (columns.length > 0) {
-                const key = $(columns[1]).text().trim();
-                const value = parseFloat($(columns[2]).text().replace(/,/, ''));
-                if (!isNaN(value)) {
-                    exchangeRates[key] = value;
-                }
+        const content = response.data as IRateMoneyResponse;
+        content.Data.reduce((acc, item) => {
+            if (item.currencyCode && item.transfer) {
+                acc[item.currencyCode] = parseFloat(item.cash);
             }
-        });
+            return exchangeRates
+        }, exchangeRates);
         exchangeRates["date"] = new Date().toISOString()
         StoreCache.setItem(VCBExchangeKey, JSON.stringify(exchangeRates), configCahe.Expire)
-        return exchangeRates
+        return exchangeRates;
     }
     public async GetExchangeRateVCBTableAsync(cancellationToken?: AbortSignal): Promise<{ [key: string]: number | string }> {
         const cacheValue = StoreCache.getItem(VCBExchangeKey)
